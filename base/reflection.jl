@@ -1111,7 +1111,11 @@ function which(@nospecialize(f), @nospecialize(t))
     end
     t = to_tuple_type(t)
     tt = signature_type(f, t)
-    m = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, typemax(UInt))
+    return _which(tt)
+end
+
+function _which(@nospecialize(sig::Type))
+    m = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), sig, typemax(UInt))
     if m === nothing
         error("no unique matching method found for the specified argument types")
     end
@@ -1215,7 +1219,7 @@ function hasmethod(@nospecialize(f), @nospecialize(t), kwnames::Tuple{Vararg{Sym
     hasmethod(f, t, world=world) || return false
     isempty(kwnames) && return true
     m = which(f, t)
-    kws = kwarg_decl(m, Core.kwftype(typeof(f)))
+    kws = kwarg_decl(m)
     for kw in kws
         endswith(String(kw), "...") && return true
     end
