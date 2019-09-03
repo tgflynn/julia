@@ -22,7 +22,9 @@ export
     AbstractREPL,
     BasicREPL,
     LineEditREPL,
-    StreamREPL
+    StreamREPL,
+    setpager!,
+    setpagerthreshold!
 
 import Base:
     AbstractDisplay,
@@ -64,8 +66,58 @@ include("docview.jl")
 
 @nospecialize # use only declared type signatures
 
+PagerArgType = Union{Nothing,AbstractString,Bool}
+
+PAGER_PATH = ""
+
+const DEFAULT_PAGER_THRESHOLD = 0.8
+PAGER_THRESHOLD = DEFAULT_PAGER_THRESHOLD
+
 function __init__()
     Base.REPL_MODULE_REF[] = REPL
+    setpager!(true)
+end
+
+function getdefaultpager()
+    sysdefault = Sys.iswindows() ? "more" : "less"
+    pager = get(ENV, "JULIA_PAGER", "")
+    path = Sys.which(pager)
+    if isnothing(path)
+        pager = get(ENV, "PAGER", sysdefault)
+        path = Sys.which(pager)
+    end
+    return path
+end
+
+function setdefaultpager!()
+    global PAGER_PATH
+    path = getdefaultpager()
+    if isnothing(path)
+        PAGER_PATH = ""
+    else
+        PAGER_PATH = path
+    end
+end
+
+function setpager!(pager::PagerArgType)
+    if isnothing(pager)
+        global PAGER_PATH = ""
+    elseif isa(pager,Bool) && pager
+        setdefaultpager!()
+    elseif isa(pager,Bool)
+        global PAGER_PATH = ""
+    else
+        path = Sys.which(pager)
+        isnothing(path) && error("Path to pager: $pager not found" )
+        global PAGER_PATH = path
+    end
+end
+
+function setpagerthreshold!(threshold::AbstractFloat)
+    if threshold < 0.0 || threshold > 1.0
+        error("setpagerthreshold: Invalid thershold value: $threshold (must be in range [0,1]" )
+    end
+    global PAGER_THRESHOLD = threshold
 end
 
 answer_color(::AbstractREPL) = ""
@@ -204,15 +256,40 @@ end
 ==(a::REPLDisplay, b::REPLDisplay) = a.repl === b.repl
 
 function display(d::REPLDisplay, mime::MIME"text/plain", x)
-    with_methodtable_hint(d.repl) do io
-        io = IOContext(io, :limit => true, :module => Main)
-        get(io, :color, false) && write(io, answer_color(d.repl))
-        if isdefined(d.repl, :options) && isdefined(d.repl.options, :iocontext)
-            # this can override the :limit property set initially
-            io = foldl(IOContext, d.repl.options.iocontext, init=io)
+<<<<<<< HEAD
+   io = outstream(d.repl)
+    iofd = Terminals.pipe_writer( io )
+    tty = isa( iofd, Base.TTY )
+    buf = IOBuffer()
+    use_color = get(io, :color, false)
+    if use_color
+        write(buf, answer_color(d.repl))
+    end
+    show(IOContext(buf, :limit => true, :module => Main, :color => use_color), mime, x)
+    seek(buf,0)
+    strlines = countlines(buf)
+    str = String(take!(buf))
+    dispsize = displaysize(iofd)
+    displaylines = dispsize[1]
+    threshold = isa(PAGER_THRESHOLD,AbstractFloat) ? PAGER_THRESHOLD : DEFAULT_PAGER_THRESHOLD
+    use_pager = ( ! Terminals.is_precompiling[] ) &&
+        ( ! isempty( PAGER_PATH ) ) &&
+        tty &&
+        ( strlines >= Int( floor( threshold * displaylines ) ) )
+    # println( stdout, "Running my display version: 6" )
+    # println( stdout, "tty               = ", tty )
+    # println( stdout, "displaysize       = ", dispsize )
+    # println( stdout, "strlines          = ", strlines )
+    # println( stdout, "threshold         = ", threshold )
+    # println( stdout, "use_pager         = ", use_pager )
+    # println( stdout, "mime              = ", mime )
+    # println( stdout, "answer_color type = ", typeof( answer_color( d.repl ) ) )
+    if use_pager
+        open( `$PAGER_PATH -r`, "w", iofd ) do pio
+            print( pio, str )
         end
-        show(io, mime, x)
-        println(io)
+    else
+      println(iofd,str)
     end
     nothing
 end
