@@ -79,13 +79,22 @@ function __init__()
 end
 
 function getdefaultpager()
-    sysdefault = Sys.iswindows() ? "more" : "less"
-    pager = get(ENV, "JULIA_PAGER", "")
-    path = Sys.which(pager)
-    if isnothing(path)
-        pager = get(ENV, "PAGER", sysdefault)
-        path = Sys.which(pager)
+    sysdefault::String = Sys.iswindows() ? "more" : "less"
+    pager::String = ""
+    if haskey(ENV, "JULIA_PAGER")
+        pager = strip(get(ENV, "JULIA_PAGER", "y"))
+        if (lowercase(pager) in [ "y", "yes", "t", "true", "1" ])
+            return Sys.which(sysdefault)
+        end
+        if isempty(pager) || (lowercase(pager) in ["n", "no", "f", "false", "0"])
+            return nothing
+        end
     end
+
+    if isempty(pager)
+        pager = get(ENV, "PAGER", sysdefault)
+    end
+    path = Sys.which(pager)
     return path
 end
 
@@ -114,8 +123,8 @@ function setpager!(pager::PagerArgType)
 end
 
 function setpagerthreshold!(threshold::AbstractFloat)
-    if threshold < 0.0 || threshold > 1.0
-        error("setpagerthreshold: Invalid thershold value: $threshold (must be in range [0,1]" )
+    if threshold < 0.0
+        error("setpagerthreshold: Invalid threshold value: $threshold (must be non-negative)" )
     end
     global PAGER_THRESHOLD = threshold
 end
