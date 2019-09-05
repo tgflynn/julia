@@ -12,3 +12,6 @@ end
 module TerminalMenusTest
     include("TerminalMenus/runtests.jl")
 end
+module REPLPagerTest
+    include("replpager.jl")
+end
