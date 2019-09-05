@@ -69,6 +69,7 @@ include("docview.jl")
 PagerArgType = Union{Nothing,AbstractString,Bool}
 
 PAGER_PATH = ""
+PAGER_ARGS = ""
 
 const DEFAULT_PAGER_THRESHOLD = 0.8
 PAGER_THRESHOLD = DEFAULT_PAGER_THRESHOLD
@@ -109,16 +110,21 @@ function setdefaultpager!()
 end
 
 function setpager!(pager::PagerArgType)
+    global PAGER_PATH
+    global PAGER_ARGS
     if isnothing(pager)
-        global PAGER_PATH = ""
+        PAGER_PATH = ""
     elseif isa(pager,Bool) && pager
         setdefaultpager!()
     elseif isa(pager,Bool)
-        global PAGER_PATH = ""
+        PAGER_PATH = ""
     else
         path = Sys.which(pager)
         isnothing(path) && error("Path to pager: $pager not found" )
-        global PAGER_PATH = path
+        PAGER_PATH = path
+    end
+    if ! isnothing(PAGER_PATH)
+        (basename(PAGER_PATH) == "less") && (PAGER_ARGS = "-r")
     end
 end
 
@@ -294,7 +300,7 @@ function display(d::REPLDisplay, mime::MIME"text/plain", x)
     # println( stdout, "mime              = ", mime )
     # println( stdout, "answer_color type = ", typeof( answer_color( d.repl ) ) )
     if use_pager
-        open( `$PAGER_PATH -r`, "w", iofd ) do pio
+        open( `$PAGER_PATH $PAGER_ARGS`, "w", iofd ) do pio
             print( pio, str )
         end
     else
