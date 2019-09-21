@@ -280,7 +280,8 @@ function display(d::REPLDisplay, mime::MIME"text/plain", x)
     if use_color
         write(buf, answer_color(d.repl))
     end
-    show(IOContext(buf, :limit => true, :module => Main, :color => use_color), mime, x)
+    ioctx = IOContext(buf, :limit => true, :displaysize => displaysize(io), :color => use_color)
+    show(ioctx, mime, x)
     seek(buf,0)
     strlines = countlines(buf)
     str = String(take!(buf))
