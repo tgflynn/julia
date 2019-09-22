@@ -277,10 +277,11 @@ function display(d::REPLDisplay, mime::MIME"text/plain", x)
     tty = isa( iofd, Base.TTY )
     buf = IOBuffer()
     use_color = get(io, :color, false)
+    limit = get(io, :limit, true)
     if use_color
         write(buf, answer_color(d.repl))
     end
-    ioctx = IOContext(buf, :limit => true, :displaysize => displaysize(io), :color => use_color)
+    ioctx = IOContext(buf, :limit => limit, :displaysize => displaysize(io), :color => use_color)
     show(ioctx, mime, x)
     seek(buf,0)
     strlines = countlines(buf)
