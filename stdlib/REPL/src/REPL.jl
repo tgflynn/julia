@@ -271,8 +271,7 @@ end
 ==(a::REPLDisplay, b::REPLDisplay) = a.repl === b.repl
 
 function display(d::REPLDisplay, mime::MIME"text/plain", x)
-<<<<<<< HEAD
-   io = outstream(d.repl)
+    io = outstream(d.repl)
     iofd = Terminals.pipe_writer( io )
     tty = isa( iofd, Base.TTY )
     buf = IOBuffer()
